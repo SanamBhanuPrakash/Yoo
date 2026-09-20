@@ -1,0 +1,9 @@
+{
+  "reference": "DEMO-04 / window beyond the source horizon, expected: INDETERMINATE",
+  "statement": "Cumulative rainfall over Chennai exceeded 200 mm during the first week of December 2023.",
+  "subject": { "lat": 13.0827, "lon": 80.2707, "radiusKm": 15, "label": "Chennai" },
+  "window": { "start": "2023-12-01T00:00:00Z", "end": "2023-12-08T00:00:00Z" },
+  "assertion": { "kind": "RAINFALL_EXCEEDED", "thresholdMm": 200, "precipitationRegime": "convective" },
+  "intendedUse": "COMMERCIAL_REDISTRIBUTION",
+  "minimumDerivation": "ESTIMATED"
+}

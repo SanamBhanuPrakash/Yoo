@@ -1,0 +1,8 @@
+{
+  "reference": "DEMO-01 / expected: SUPPORTED",
+  "subject": { "lat": 35.6762, "lon": 139.6503, "radiusKm": 300, "label": "Greater Tokyo" },
+  "window": { "start": "2026-08-01T00:00:00Z", "end": "2026-09-01T00:00:00Z" },
+  "assertion": { "kind": "SEISMIC_EVENT", "minMagnitude": 5.0, "reportingTerms": ["earthquake"] },
+  "intendedUse": "COMMERCIAL_REDISTRIBUTION",
+  "minimumDerivation": "DERIVED"
+}

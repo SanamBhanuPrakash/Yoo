@@ -1,0 +1,9 @@
+{
+  "reference": "DEMO-05 / licence gate, expected: BLOCKED",
+  "statement": "At least one transponder-equipped aircraft was present over Frankfurt during the live snapshot.",
+  "subject": { "lat": 50.0379, "lon": 8.5622, "radiusKm": 40, "label": "Frankfurt Airport" },
+  "window": { "start": "2026-09-20T21:00:00Z", "end": "2026-09-20T23:00:00Z" },
+  "assertion": { "kind": "AIRCRAFT_PRESENCE" },
+  "intendedUse": "COMMERCIAL_REDISTRIBUTION",
+  "minimumDerivation": "ESTIMATED"
+}

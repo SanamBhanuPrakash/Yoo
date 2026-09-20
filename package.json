@@ -1,0 +1,16 @@
+{
+  "name": "sakshya",
+  "version": "0.1.0",
+  "description": "An evidence engine for claims about the physical world. Verifies what happened at a place and time from independent public sources, labels how it knows, and refuses to answer when it cannot.",
+  "type": "module",
+  "license": "MIT",
+  "bin": { "sakshya": "./src/cli.js" },
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "node --test \"src/**/*.test.mjs\"",
+    "screen": "node src/cli.js screen",
+    "demo": "node scripts/demo.mjs"
+  },
+  "keywords": ["provenance", "evidence", "geospatial", "attestation", "parametric-insurance", "open-data", "data-licensing"],
+  "dependencies": {}
+}

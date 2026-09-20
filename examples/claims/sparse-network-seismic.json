@@ -1,0 +1,9 @@
+{
+  "reference": "DEMO-03 / small event in a sparsely instrumented region, expected: UNSUPPORTED (not REFUTED)",
+  "statement": "A magnitude 2.8 or greater earthquake occurred near Timbuktu, Mali, during August 2026.",
+  "subject": { "lat": 16.7666, "lon": -3.0026, "radiusKm": 200, "label": "Timbuktu region, Mali" },
+  "window": { "start": "2026-08-01T00:00:00Z", "end": "2026-09-01T00:00:00Z" },
+  "assertion": { "kind": "SEISMIC_EVENT", "minMagnitude": 2.8 },
+  "intendedUse": "COMMERCIAL_REDISTRIBUTION",
+  "minimumDerivation": "ESTIMATED"
+}

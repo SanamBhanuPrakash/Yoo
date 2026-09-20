@@ -1,0 +1,12 @@
+{
+  "reference": "DEMO-02 / parametric rainfall trigger, expected: REFUTED",
+  "statement": "Cumulative rainfall over Mumbai exceeded the 100 mm weekly payout trigger between 5 and 12 August 2026.",
+  "subject": { "lat": 19.0760, "lon": 72.8777, "radiusKm": 10, "label": "Mumbai" },
+  "window": { "start": "2026-08-05T00:00:00Z", "end": "2026-08-12T00:00:00Z" },
+  "assertion": {
+    "kind": "RAINFALL_EXCEEDED", "thresholdMm": 100,
+    "precipitationRegime": "monsoon", "reportingTerms": ["rain", "flood"]
+  },
+  "intendedUse": "COMMERCIAL_REDISTRIBUTION",
+  "minimumDerivation": "ESTIMATED"
+}

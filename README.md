@@ -2,13 +2,41 @@
 
 **साक्ष्य** — *evidence*.
 
-An evidence engine for claims about the physical world. It answers one question:
+An evidence engine for claims about the physical world, and a product built on
+it: the **Place History Report**.
 
 > **Did X happen at place P during window W — how do you know, and what could
 > you not have known?**
 
 It issues a signed, independently reproducible certificate, and it refuses to
 answer when the evidence cannot support an answer.
+
+---
+
+## Start here: the blind-window ledger
+
+```console
+$ node src/cli.js place 17.385 78.4867 --years 2 --name "Sultan Bazar plot"
+
+Koti Women's College Road, Sultan Bazar, Hyderabad, Telangana, India
+
+  [HIGH  ] 155 consecutive days with no usable satellite view
+  [LOW   ] Sloping ground, about 1.67% gradient
+  [LOW   ] No M4.0+ earthquake recorded within 150 km in 25 years
+```
+
+Measured live: that plot had **344 Sentinel-2 passes in two years, of which only
+148 produced a usable view.** The longest unbroken blind window ran **155 days**
+(6 June to 8 November 2025), and **50.5% of all days** fell inside a blind window
+of two weeks or more.
+
+Every satellite-backed property service shows you a picture and lets you assume
+continuous knowledge. This one leads with the gaps — because encroachment,
+unauthorised construction and quiet demolition do not happen at random. They
+happen when nobody is looking, and this computes, to the day, when that was.
+
+Who it is for: someone about to commit a large sum to land they have not stood
+on. See [docs/06-THE-PIVOT.md](docs/06-THE-PIVOT.md) for who pays and why.
 
 ---
 
@@ -143,6 +171,12 @@ Five worked examples in `examples/claims/`, one per verdict class:
 | `historic-rainfall` | `INDETERMINATE` | window beyond source horizon — not queried |
 | `airspace-commercial` | `BLOCKED` | licence gate; no packet sent |
 
+And the report product:
+
+```bash
+node src/cli.js place <lat> <lon> --years 2 --name "My plot" --out out
+```
+
 ---
 
 ## What a certificate contains
@@ -195,6 +229,10 @@ src/
   sources/openMeteo.js     precipitation — permanently MODELED, records grid offset
   sources/gdelt.js         news — corroboration only, can never refute
   sources/opensky.js       aircraft — implemented, commercially refused
+  sources/sentinelWitness.js  Sentinel-2 observation ledger — the blind-window engine
+  sources/terrain.js       SRTM terrain — does surface water collect here?
+  reports/placeHistory.js  the Place History Report composer
+  render/placeReport.js    buyer-facing HTML report
   engine/                  claim grammar, orchestration, verdict algebra
   attest/                  canonical JSON, bundle, ed25519, verifier
   render/certificate.js    self-contained HTML, archivable offline
@@ -212,6 +250,7 @@ src/
 | [03-EVIDENCE-AND-LAW](docs/03-EVIDENCE-AND-LAW.md) | admissibility shape, and what this refuses to claim |
 | [04-BUSINESS](docs/04-BUSINESS.md) | moat, revenue shapes, go-to-market, what not to build |
 | [05-RELATION-TO-GODS-EYE-VIEW](docs/05-RELATION-TO-GODS-EYE-VIEW.md) | what was taken, sharpened, and rejected |
+| [06-THE-PIVOT](docs/06-THE-PIVOT.md) | **from an engine nobody buys to a report anybody can** — product, pricing, distribution |
 
 ---
 
@@ -219,12 +258,17 @@ src/
 
 This is a working engine with real data, not a product.
 
-- **Works today:** the full pipeline, live, against USGS and Open-Meteo. 76 tests.
+- **Works today:** the full pipeline, live, against USGS, Open-Meteo, Sentinel-2
+  (Copernicus via Earth Search STAC), SRTM and Nominatim. 95 tests.
 - **Rate-limited here:** GDELT returns 503 from shared infrastructure, and
   Open-Meteo's archive endpoint is daily-quota exhausted. Both degrade to
   `INDETERMINATE` exactly as designed — which is the thesis working, not a bug.
-- **Deliberately absent:** persistence, a service API, auth, a UI. Those are
-  engineering, and none of them change whether the idea is right.
+- **Deliberately absent:** persistence, a service API, auth, payments, a web UI.
+  Those are engineering, and none of them change whether the idea is right.
+- **The clearest gap:** historical water extent (JRC Global Surface Water). The
+  Bihar example shows why — on a flat floodplain, terrain is the wrong
+  instrument and SRTM honestly reports that it cannot resolve the question.
+  Observed historical water is the right instrument, and needs COG pixel reading.
 - **Licence summaries are structured readings of public terms**, dated, and not
   legal advice.
 

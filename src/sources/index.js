@@ -6,8 +6,10 @@ import * as usgs from './usgs.js';
 import * as openMeteo from './openMeteo.js';
 import * as gdelt from './gdelt.js';
 import * as opensky from './opensky.js';
+import * as sentinelWitness from './sentinelWitness.js';
+import * as terrain from './terrain.js';
 
-export const ADAPTERS = Object.freeze([usgs, openMeteo, gdelt, opensky]);
+export const ADAPTERS = Object.freeze([usgs, openMeteo, gdelt, opensky, sentinelWitness, terrain]);
 
 /** Adapters that claim to support an assertion kind. */
 export function adaptersFor(assertionKind) {

@@ -77,15 +77,28 @@ export function observability(claim) {
       `Absence from the catalog is weak evidence of absence at this magnitude.`;
   }
 
-  // Latency: reviewed magnitudes settle over ~1h. A window ending seconds ago
-  // may be covered only by automatic solutions.
+  // Latency. An earlier version scored this from the window's END INSTANT, which
+  // meant a 25-year historical query whose window ran up to "now" was penalised
+  // as if the whole catalogue were unreviewed — observability collapsed to 0.22
+  // on a query that was, in substance, entirely settled history.
+  //
+  // The right quantity is the FRACTION OF THE WINDOW that has had time to
+  // settle. One unreviewed hour at the end of a quarter-century is irrelevant;
+  // one unreviewed hour at the end of a two-hour window is most of the claim.
+  const SETTLE_MS = 3600_000;
+  const startMs = Date.parse(claim.window.start);
   const endMs = Date.parse(claim.window.end);
-  const ageMin = (Date.now() - endMs) / 60000;
-  const latency = ageMin >= 60 ? 1 : ageMin <= 0 ? 0.3 : 0.3 + 0.7 * (ageMin / 60);
-  const latencyReason =
-    ageMin >= 60
-      ? 'Window closed over an hour ago; reviewed solutions are expected to be published.'
-      : `Window closed ${Math.max(0, ageMin).toFixed(0)} min ago; some solutions may still be automatic and subject to revision.`;
+  const windowMs = Math.max(1, endMs - startMs);
+  const settledEnd = Math.min(endMs, Date.now() - SETTLE_MS);
+  const settledFraction = Math.max(0, Math.min(1, (settledEnd - startMs) / windowMs));
+  // Floor at 0.3: even a wholly-unsettled window yields automatic solutions,
+  // which are real observations, merely provisional. The provisional-ness is
+  // handled separately by the review-status demotion in the engine.
+  const latency = 0.3 + 0.7 * settledFraction;
+  const latencyReason = settledFraction >= 0.999
+    ? 'The entire window has had time for reviewed solutions to be published.'
+    : `${Math.round(settledFraction * 100)}% of the window has had time to settle; the remainder ` +
+      'may be covered only by automatic solutions subject to revision.';
 
   return envelope([
     { factor: FACTOR.SPATIAL_COVERAGE, score: 1, reason: 'ComCat is a global catalog.' },

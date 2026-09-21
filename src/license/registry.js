@@ -129,6 +129,32 @@ export const LICENSE_REGISTRY = Object.freeze({
     note: 'Max 1 request/second, identifying User-Agent required, results must be cached. Share-alike attaches to derived DATABASES, not to a single resolved place name used as context.',
   },
 
+  'sentinel-2-observations': {
+    sourceId: 'sentinel-2-observations',
+    license: 'COPERNICUS-FREE-FULL-OPEN',
+    licenseUrl: 'https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice',
+    maxUse: USE.COMMERCIAL_REDISTRIBUTION,
+    obligations: [OBLIGATION.ATTRIBUTION],
+    attribution: 'Contains modified Copernicus Sentinel data (2017\u20132026); catalogue via Earth Search (Element 84)',
+    verifiedOn: '2026-09-21',
+    note: 'Copernicus operates a free, full and open data policy expressly permitting commercial use, ' +
+      'subject to acknowledging the source. This is one of the very few globally-complete, ' +
+      'commercially-clean Earth observation archives, which is precisely why it is the backbone here.',
+  },
+
+  'srtm-terrain': {
+    sourceId: 'srtm-terrain',
+    license: 'US-PUBLIC-DOMAIN',
+    licenseUrl: 'https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits',
+    maxUse: USE.COMMERCIAL_REDISTRIBUTION,
+    obligations: [OBLIGATION.CITATION_REQUESTED, OBLIGATION.RATE_LIMITED],
+    attribution: 'Elevation: NASA/USGS SRTM (public domain), served via OpenTopoData',
+    verifiedOn: '2026-09-21',
+    note: 'SRTM itself is US public domain. The OpenTopoData public instance is a free service with ' +
+      'fair-use limits (about 1 call/second, 1000/day); a commercial deployment at volume should ' +
+      'self-host the tiles rather than lean on someone else\u2019s goodwill.',
+  },
+
   /* ---------------------------------------------------------------------- *
    * Deliberately present and deliberately blocked.
    *

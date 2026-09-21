@@ -26,6 +26,10 @@ export const ASSERTION = Object.freeze({
   PUBLIC_REPORTING: 'PUBLIC_REPORTING',
   /** An aircraft was present in the space-time box. Only served by a non-commercial source. */
   AIRCRAFT_PRESENCE: 'AIRCRAFT_PRESENCE',
+  /** How often, and when, was this location actually observed from orbit? */
+  OBSERVATION_RECORD: 'OBSERVATION_RECORD',
+  /** What is the local terrain, and does surface water collect here? */
+  TERRAIN_CONTEXT: 'TERRAIN_CONTEXT',
 });
 
 export class InvalidClaim extends Error {
@@ -113,6 +117,10 @@ export function describeClaim({ subject, window, assertion }) {
       return `An earthquake of magnitude ${assertion.minMagnitude} or greater occurred at ${where}, ${when}.`;
     case ASSERTION.RAINFALL_EXCEEDED:
       return `Cumulative precipitation at ${where} exceeded ${assertion.thresholdMm} mm, ${when}.`;
+    case ASSERTION.OBSERVATION_RECORD:
+      return `The public satellite observation record for ${where}, ${when}.`;
+    case ASSERTION.TERRAIN_CONTEXT:
+      return `The local terrain and surface-water behaviour at ${where}.`;
     case ASSERTION.AIRCRAFT_PRESENCE:
       return `At least one transponder-equipped aircraft was present at ${where}, ${when}.`;
     case ASSERTION.PUBLIC_REPORTING:

@@ -17,6 +17,8 @@ import { buildBundle } from './attest/bundle.js';
 import { generateIssuerKeypair, signBundle } from './attest/sign.js';
 import { verifyBundle } from './attest/verify.js';
 import { renderCertificate } from './render/certificate.js';
+import { renderPlaceReport } from './render/placeReport.js';
+import { buildPlaceHistory } from './reports/placeHistory.js';
 import { ADAPTERS } from './sources/index.js';
 import { screenSource } from './license/policy.js';
 import { USE } from './license/registry.js';
@@ -106,12 +108,42 @@ function pad(s, n) { return String(s ?? '').padEnd(n); }
 function die(msg) { process.stderr.write(`${msg}\n`); process.exit(2); }
 
 const [cmd, ...rest] = process.argv.slice(2);
-const table = { attest: cmdAttest, verify: cmdVerify, keygen: cmdKeygen, screen: cmdScreen };
+async function cmdPlace(argv) {
+  const lat = Number(argv[0]);
+  const lon = Number(argv[1]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    die('usage: sakshya place <lat> <lon> [--years N] [--name LABEL] [--out DIR]');
+  }
+  const years = Number(flag(argv, 'years', '2'));
+  process.stderr.write(`\u2022 building place history for ${lat}, ${lon} (${years}y)\n`);
+  const report = await buildPlaceHistory({
+    lat, lon, historyYears: years, label: flag(argv, 'name'),
+    radiusKm: Number(flag(argv, 'radius', '1')),
+  });
+
+  const outDir = flag(argv, 'out', 'out');
+  mkdirSync(outDir, { recursive: true });
+  const stem = (flag(argv, 'name') ?? `place-${lat.toFixed(4)}_${lon.toFixed(4)}`)
+    .replace(/[^a-zA-Z0-9-_.]+/g, '-').slice(0, 60);
+  const htmlPath = join(outDir, `${stem}.report.html`);
+  const jsonPath = join(outDir, `${stem}.report.json`);
+  writeFileSync(htmlPath, renderPlaceReport(report));
+  writeFileSync(jsonPath, JSON.stringify(report, null, 2));
+
+  process.stdout.write(`\n${report.place?.displayName ?? 'location'}\n\n`);
+  for (const h of report.highlights) {
+    process.stdout.write(`  [${pad(h.severity, 6)}] ${h.headline}\n`);
+  }
+  process.stdout.write(`\n  report ${htmlPath}\n  data   ${jsonPath}\n`);
+}
+
+const table = { attest: cmdAttest, verify: cmdVerify, keygen: cmdKeygen, screen: cmdScreen, place: cmdPlace };
 if (!table[cmd]) {
   die('sakshya <attest|verify|keygen|screen> [...]\n\n' +
       '  attest <claim.json> [--out DIR] [--key FILE] [--use USE]  evaluate a claim and issue a bundle\n' +
       '  verify <bundle.json> [--reproduce]                        check integrity, and optionally re-fetch\n' +
       '  keygen [--out DIR]                                        create an ed25519 issuer keypair\n' +
-      '  screen [--use USE]                                        show what each source permits\n');
+      '  screen [--use USE]                                        show what each source permits\n' +
+      '  place <lat> <lon> [--years N] [--name LABEL] [--out DIR]  build a Place History Report\n');
 }
 await table[cmd](rest);

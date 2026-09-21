@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>ShopFair — Checkout</title>
+<style>
+  body{font:16px system-ui;margin:0;background:#fff;color:#111}
+  .wrap{max-width:760px;margin:0 auto;padding:24px}
+  /* Both choices are equally legible and comparably sized. */
+  .btn{border:1px solid #0a8a4a;padding:14px 28px;font-size:16px;border-radius:8px;cursor:pointer}
+  .primary{background:#0a8a4a;color:#fff}
+  .secondary{background:#fff;color:#0a5c32}
+  .adlabel{font-size:15px;color:#333;font-weight:700}
+  .card{border:1px solid #eee;border-radius:8px;padding:16px;margin:14px 0}
+</style></head>
+<body>
+<div class="wrap">
+  <h1>Checkout</h1>
+
+  <!-- Same commerce, stated as fact rather than pressure. -->
+  <div class="card">
+    <p>In stock. Dispatched within 2 business days.</p>
+    <p>This offer is valid until 31 March 2026.</p>
+  </div>
+
+  <!-- Add-ons offered, none pre-selected. -->
+  <div class="card">
+    <h3>Your order</h3>
+    <label><input type="checkbox" id="ins"> Add Purchase Protection insurance — ₹149</label><br>
+    <label><input type="checkbox" id="don"> Donate ₹10 to our charity partner</label><br>
+    <label><input type="checkbox" id="exp"> Express priority delivery — ₹99</label><br>
+    <label><input type="checkbox" id="news"> Email me occasional offers</label>
+  </div>
+
+  <!-- Full price stated upfront, nothing deferred. -->
+  <div class="card">
+    <p>Item total ₹1,299</p>
+    <p>Delivery ₹0</p>
+    <p>GST included</p>
+    <p><strong>Total payable ₹1,299</strong></p>
+  </div>
+
+  <!-- Plainly worded consent, single polarity. -->
+  <div class="card">
+    <label for="tq"><input type="checkbox" id="tq">
+      Yes, send me marketing communication by email
+    </label>
+  </div>
+
+  <!-- Disclosure at readable size and contrast. -->
+  <div class="card">
+    <span class="adlabel">Sponsored</span>
+    <h3>Top 10 phones our editors love</h3>
+  </div>
+
+  <!-- Both options equally reachable; decline is plainly worded. -->
+  <div class="card" id="consent">
+    <p>Save ₹200 with ShopFair Plus membership</p>
+    <button class="btn primary">Add membership</button>
+    <button class="btn secondary">No thanks</button>
+  </div>
+</div>
+</body></html>

@@ -1,0 +1,14 @@
+{
+  "name": "kasauti",
+  "version": "0.1.0",
+  "description": "Dark pattern auditor for India's CCPA Guidelines 2023. Measures instead of guessing, and declares what it cannot check.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test test/engine.test.mjs",
+    "audit": "node cli/audit.mjs"
+  },
+  "keywords": ["dark-patterns", "ccpa", "india", "consumer-protection", "compliance", "chrome-extension", "accessibility", "wcag"],
+  "dependencies": {}
+}

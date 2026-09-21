@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Kasauti \u2014 Dark Pattern Check (CCPA 2023)",
+  "version": "0.1.0",
+  "description": "Checks the page you are on against the 13 dark patterns named in India's CCPA Guidelines 2023, and tells you which ones it cannot check.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "action": {
+    "default_title": "Kasauti \u2014 check this page",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "engine/registry.js",
+        "engine/measure.js",
+        "engine/detectors.js",
+        "engine/scan.js",
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

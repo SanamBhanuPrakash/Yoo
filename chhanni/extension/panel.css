@@ -1,0 +1,39 @@
+.chhanni-panel {
+  position: fixed; right: 20px; bottom: 20px; z-index: 2147483647;
+  width: min(420px, calc(100vw - 40px));
+  font: 13px/1.5 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #14181f; background: #fff;
+  border: 1px solid #e3e6ea; border-left: 4px solid #d1495b;
+  border-radius: 10px; box-shadow: 0 12px 32px rgba(10, 15, 25, .18);
+  padding: 14px 16px;
+}
+.chhanni-warn { border-left-color: #d98324; }
+.chhanni-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.chhanni-dot { width: 8px; height: 8px; border-radius: 50%; background: #d1495b; flex: none; }
+.chhanni-warn .chhanni-dot { background: #d98324; }
+.chhanni-head strong { font-weight: 600; font-size: 13.5px; }
+.chhanni-list { list-style: none; margin: 0 0 12px; padding: 0; max-height: 220px; overflow-y: auto; }
+.chhanni-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; padding: 5px 0; border-top: 1px solid #f0f2f4; }
+.chhanni-list li:first-child { border-top: none; }
+.chhanni-label { font-weight: 500; }
+.chhanni-sev-critical .chhanni-label { color: #b3243a; }
+.chhanni-sev-high .chhanni-label { color: #a8620f; }
+.chhanni-list code { font: 11.5px ui-monospace, SFMono-Regular, Menlo, monospace; background: #f3f5f7; border-radius: 4px; padding: 1px 5px; color: #4a5361; }
+.chhanni-list em { flex-basis: 100%; font-style: normal; color: #6b7482; font-size: 11.5px; }
+.chhanni-more { color: #6b7482; font-size: 12px; }
+.chhanni-actions { display: flex; gap: 8px; }
+.chhanni-actions button { font: inherit; font-weight: 500; border-radius: 7px; padding: 7px 12px; cursor: pointer; border: 1px solid transparent; }
+.chhanni-primary { background: #14181f; color: #fff; flex: 1; }
+.chhanni-primary:hover { background: #2a303a; }
+.chhanni-ghost { background: transparent; color: #6b7482; border-color: #e3e6ea; }
+.chhanni-ghost:hover { color: #14181f; }
+.chhanni-foot { margin-top: 10px; font-size: 11px; color: #8c95a3; }
+@media (prefers-color-scheme: dark) {
+  .chhanni-panel { color: #e6e9ee; background: #1b1f26; border-color: #2c323b; }
+  .chhanni-list li { border-top-color: #262b33; }
+  .chhanni-list code { background: #262b33; color: #aab3c0; }
+  .chhanni-primary { background: #e6e9ee; color: #14181f; }
+  .chhanni-primary:hover { background: #fff; }
+  .chhanni-ghost { border-color: #2c323b; color: #98a1ae; }
+  .chhanni-ghost:hover { color: #e6e9ee; }
+}

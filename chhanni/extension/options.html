@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Chhanni</title>
+<style>
+  :root { color-scheme: light dark; --fg:#14181f; --muted:#6b7482; --bg:#fff; --line:#e3e6ea; --sub:#f6f7f9; }
+  @media (prefers-color-scheme: dark) { :root { --fg:#e6e9ee; --muted:#98a1ae; --bg:#14181f; --line:#2c323b; --sub:#1b1f26; } }
+  body { font: 14px/1.6 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--fg); background:var(--bg); margin:0; padding:28px; max-width:620px; }
+  h1 { font-size:18px; margin:0 0 2px; } h1 span { color:var(--muted); font-weight:400; }
+  p.lede { color:var(--muted); margin:0 0 22px; }
+  fieldset { border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin:0 0 16px; }
+  legend { font-weight:600; padding:0 6px; font-size:13px; }
+  label { display:flex; gap:9px; align-items:flex-start; padding:5px 0; cursor:pointer; }
+  label small { color:var(--muted); }
+  .rules { max-height:280px; overflow-y:auto; display:grid; grid-template-columns:1fr 1fr; gap:0 14px; }
+  .rules label { font-size:13px; }
+  textarea { width:100%; box-sizing:border-box; font:12px ui-monospace,Menlo,monospace; border:1px solid var(--line); border-radius:7px; padding:8px; background:var(--sub); color:var(--fg); min-height:72px; }
+  .sev { font-size:10px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); border:1px solid var(--line); border-radius:4px; padding:0 4px; }
+  footer { color:var(--muted); font-size:12px; border-top:1px solid var(--line); padding-top:14px; }
+  #saved { color:#2e7d52; font-size:12px; margin-left:8px; }
+</style>
+</head>
+<body>
+  <h1>Chhanni <span>छन्नी — a sieve</span></h1>
+  <p class="lede">Checks what you paste into an AI chat, on this device. Nothing leaves your browser.</p>
+
+  <fieldset>
+    <legend>When something is found</legend>
+    <label><input type="radio" name="mode" value="strict"><span><strong>Stop for everything</strong><br><small>Any finding interrupts, including emails and phone numbers.</small></span></label>
+    <label><input type="radio" name="mode" value="warn"><span><strong>Stop for credentials and identifiers</strong> — recommended<br><small>Keys, tokens, cards, Aadhaar, SSN. Low-severity findings are shown on paste only.</small></span></label>
+    <label><input type="radio" name="mode" value="off"><span><strong>Off</strong><br><small>Detection disabled everywhere.</small></span></label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Detectors</legend>
+    <div class="rules" id="rules"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Never flag these</legend>
+    <textarea id="allow" placeholder="One value per line. Use for shared test fixtures and sample keys that live in your docs."></textarea>
+  </fieldset>
+
+  <footer>
+    Chhanni requests no network permission and makes no network call. Your detections,
+    your allowlist and your settings stay in this browser profile.
+    <span id="saved"></span>
+  </footer>
+  <script type="module" src="options.js"></script>
+</body>
+</html>

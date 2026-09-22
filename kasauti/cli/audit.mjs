@@ -22,6 +22,7 @@
  *   node cli/audit.mjs <url> [--out DIR] [--nag-seconds N] [--no-proof] [--headed]
  */
 
+import { probeDismissibility, probeOptOutPersistence, probeCancellationAsymmetry } from './probes.mjs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -33,7 +34,7 @@ const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ENGINE = join(HERE, '..', 'engine');
-const ENGINE_FILES = ['registry.js', 'measure.js', 'detectors.js', 'scan.js'];
+const ENGINE_FILES = ['registry.js', 'lexicon.js', 'measure.js', 'detectors.js', 'score.js', 'scan.js'];
 
 const argv = process.argv.slice(2);
 const url = argv.find((a) => !a.startsWith('--'));
@@ -45,7 +46,13 @@ const has = (n) => argv.includes(`--${n}`);
 
 if (!url) {
   process.stderr.write(
-    'usage: node cli/audit.mjs <url> [--out DIR] [--nag-seconds N] [--no-proof] [--headed]\n');
+    'usage: node cli/audit.mjs <url> [options]\n\n' +
+    '  --out DIR         where to write the report (default: out)\n' +
+    '  --nag-seconds N   observation window for nagging (default: 8, 0 to skip)\n' +
+    '  --no-proof        skip the countdown reload test\n' +
+    '  --no-probe        skip the interaction probes\n' +
+    '  --crawl           also measure join/leave asymmetry across the site\n' +
+    '  --headed          run with a visible browser\n');
   process.exit(2);
 }
 
@@ -187,9 +194,48 @@ async function main() {
     }
   }
 
+  // ---- Active probes: stop observing the page, start testing it --------
+  // Observation says "no visible dismiss control". A probe says "Escape, a
+  // backdrop click and every close-looking control were tried and it is still
+  // there". Only the second survives "the user could just press Escape".
+  const probes = {};
+  if (!has('no-probe')) {
+    const forced = report.findings.find((f) => f.pattern === 'FORCED_ACTION');
+    if (forced) {
+      process.stderr.write('  \u2022 probing overlay dismissibility\u2026\n');
+      probes.dismissibility = await probeDismissibility(page, forced);
+      if (probes.dismissibility.finding) {
+        // The probe supersedes the passive finding rather than sitting beside it.
+        report.findings = report.findings.filter((f) => f !== forced);
+        report.findings.push(probes.dismissibility.finding);
+      }
+    }
+    if (report.findings.some((f) => f.pattern === 'BASKET_SNEAKING')) {
+      process.stderr.write('  \u2022 probing whether opting out sticks\u2026\n');
+      probes.optOut = await probeOptOutPersistence(page, url);
+      if (probes.optOut.finding) report.findings.push(probes.optOut.finding);
+    }
+  }
+
   const screenshot = join(outDir, `${slug(url)}.png`);
-  await page.screenshot({ path: screenshot, fullPage: false });
+  await page.screenshot({ path: screenshot, fullPage: false }).catch(() => {});
   await page.close();
+
+  // SUBSCRIPTION_TRAP is declared unassessable by the page scan, and strictly
+  // still is. This measures the gradient between joining and leaving, which is
+  // a different and weaker claim -- and says so in those words.
+  if (has('crawl')) {
+    process.stderr.write('  \u2022 measuring join/leave asymmetry\u2026\n');
+    try {
+      probes.cancellation = await probeCancellationAsymmetry(browser, new URL(url).origin);
+      if (probes.cancellation.finding) {
+        report.findings.push(probes.cancellation.finding);
+        report.notChecked = report.notChecked.filter((n) => n.pattern !== 'SUBSCRIPTION_TRAP');
+      }
+    } catch (err) {
+      probes.cancellation = { ran: false, reason: err.message };
+    }
+  }
 
   let proof = { ran: false, reason: 'skipped (--no-proof)' };
   if (!has('no-proof')) proof = await countdownReloadTest(browser, url, report);
@@ -210,13 +256,18 @@ async function main() {
   report.summary.patternsDetected = Object.keys(report.summary.byPattern).length;
   report.notDetected = report.notDetected.filter((n) => !report.summary.byPattern[n.pattern]);
 
+  // The Compliance Index is computed LAST, over the findings as they finally
+  // stand -- including the ones the probes upgraded from STRONG to PROVEN.
+  report.score = await computeScore(report);
+
   report.audit = {
     tool: 'Kasauti',
-    version: '0.1.0',
+    version: '0.2.0',
     httpStatus: status,
     screenshot,
     naggingObservation: { seconds: nagSeconds, interruptions: nagging.interruptions ?? [] },
     countdownProof: proof,
+    probes,
     auditedAt: new Date().toISOString(),
   };
   // Fingerprint over the findings so two parties can confirm they hold the
@@ -234,8 +285,31 @@ async function main() {
   print(report, jsonPath, htmlPath);
 }
 
+/**
+ * Scoring lives in the engine so the extension and the CLI cannot drift apart.
+ * Running it in a page context rather than porting it to Node is deliberate:
+ * a second implementation is a second set of bugs and a second set of numbers.
+ */
+async function computeScore(report) {
+  const b = await chromium.launch({ args: ['--no-sandbox'] });
+  const pg = await b.newPage();
+  await pg.goto('about:blank');
+  for (const f of ['registry.js', 'score.js']) await pg.addScriptTag({ path: join(ENGINE, f) });
+  const s = await pg.evaluate((r) => globalThis.Kasauti.score(r),
+    { findings: report.findings, notChecked: report.notChecked });
+  await b.close();
+  return s;
+}
+
 function print(report, jsonPath, htmlPath) {
   const s = report.summary;
+  const sc = report.score;
+  if (sc) {
+    process.stdout.write(
+      `\n  COMPLIANCE INDEX  ${sc.value}/100  grade ${sc.grade}` +
+      `   \u00b7   assurance ${sc.assurance}%  (${sc.patternsAssessed}/${sc.patternsTotal} patterns assessed)\n`);
+    process.stdout.write(`  ${sc.label}\n`);
+  }
   process.stdout.write(`\n${report.title ?? report.url}\n`);
   process.stdout.write(`${'─'.repeat(64)}\n`);
   process.stdout.write(

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="hi"><head><meta charset="utf-8"><title>BazaarApp — चेकआउट</title>
+<style>
+  body{font:16px system-ui;margin:0;background:#fff;color:#111}
+  .wrap{max-width:720px;margin:0 auto;padding:24px}
+  .card{border:1px solid #eee;border-radius:8px;padding:16px;margin:14px 0}
+  .urgent{color:#c00;font-weight:700}
+  .cta{background:#0a8a4a;color:#fff;border:0;padding:18px 44px;font-size:19px;font-weight:800;border-radius:8px}
+  .decline{background:transparent;border:0;color:#efefef;font-size:10px}
+</style></head>
+<body><div class="wrap">
+  <h1>चेकआउट</h1>
+
+  <!-- Hindi scarcity: an English-only detector sees nothing here -->
+  <div class="card">
+    <p class="urgent">सिर्फ 2 बचे</p>
+    <p>जल्दी करें</p>
+    <p>14 लोग देख रहे हैं</p>
+  </div>
+
+  <!-- Hinglish scarcity, Latin script, invisible to Unicode range checks -->
+  <div class="card">
+    <p>Sirf 3 bache hain — jaldi karein!</p>
+    <p>Stock khatam hone wala hai</p>
+  </div>
+
+  <!-- Hindi fee line on an otherwise English checkout -->
+  <div class="card">
+    <p>Item total ₹1,299</p>
+    <p>सुविधा शुल्क ₹49</p>
+    <p>प्लेटफ़ॉर्म शुल्क ₹19</p>
+  </div>
+
+  <!-- Confirm shaming, Hindi and Hinglish -->
+  <div class="card">
+    <p>₹200 बचाएं BazaarApp Plus के साथ</p>
+    <button class="cta">हाँ, जोड़ें</button>
+    <button class="decline">नहीं, मुझे बचत नहीं चाहिए</button>
+  </div>
+  <div class="card">
+    <p>Save ₹200 with BazaarApp Plus</p>
+    <button class="cta">Haan, add karein</button>
+    <button class="decline">Nahi, mujhe bachat nahi chahiye</button>
+  </div>
+</div></body></html>

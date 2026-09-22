@@ -20,8 +20,10 @@
       ],
       "js": [
         "engine/registry.js",
+        "engine/lexicon.js",
         "engine/measure.js",
         "engine/detectors.js",
+        "engine/score.js",
         "engine/scan.js",
         "content.js"
       ],

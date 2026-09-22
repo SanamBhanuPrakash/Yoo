@@ -90,8 +90,19 @@
       byPattern[f.pattern] = (byPattern[f.pattern] || 0) + 1;
     });
 
+    // Which languages is this page actually written in, and how well does the
+    // lexicon know them? A clean result on a Tamil page with partial Tamil
+    // coverage is much weaker evidence than a clean result on an English one,
+    // and the report has to say so rather than presenting one number for both.
+    var pageText = (doc.body ? (doc.body.innerText || '') : '').slice(0, 200000);
+    var scripts = K.lexicon ? K.lexicon.detectScripts(pageText) : [];
+    var coverage = K.lexicon ? K.lexicon.coverageWarning(scripts) : null;
+
     return {
       formatVersion: 'kasauti-scan/1',
+      scriptsOnPage: scripts,
+      lexiconCoverage: coverage,
+      lexiconLanguages: K.lexicon ? K.lexicon.languages() : [],
       url: root.location ? root.location.href : null,
       title: doc.title || null,
       scannedAt: startedAt,

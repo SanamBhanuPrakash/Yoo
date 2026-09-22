@@ -32,7 +32,7 @@ let clean;
 async function scanFixture(name) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   await page.goto(`file://${join(FIXTURES, name)}`);
-  for (const f of ['registry.js', 'measure.js', 'detectors.js', 'scan.js']) {
+  for (const f of ['registry.js', 'lexicon.js', 'measure.js', 'detectors.js', 'score.js', 'scan.js']) {
     await page.addScriptTag({ path: join(ENGINE, f) });
   }
   const report = await page.evaluate(() => globalThis.Kasauti.scan());
@@ -230,4 +230,215 @@ test('every finding maps to a real clause of the 2023 Guidelines', async () => {
     assert.match(clauses[f.pattern] ?? '', /^Annexure 1\(\d+\)$/,
       `${f.pattern} must cite a guideline clause`);
   }
+});
+
+/* ===================================================================== *
+ * INDIAN LANGUAGES
+ *
+ * The gap every other dark-pattern detector has. Indian storefronts run in
+ * Hindi, Hinglish, Tamil, Telugu, Bengali and Marathi; an English-only regex
+ * reads those pages as clean, which is worse than not checking, because it
+ * manufactures a pass.
+ * ===================================================================== */
+
+let hinglish;
+test('scan a Hindi/Hinglish checkout', async () => {
+  hinglish = await scanFixture('hinglish.html');
+  assert.ok(hinglish.findings.length > 0);
+});
+
+test('Devanagari scarcity is caught ("सिर्फ 2 बचे")', () => {
+  const f = get(hinglish, 'FALSE_URGENCY').filter((x) => x.evidence.language === 'Hindi');
+  assert.ok(f.length >= 2, `expected Hindi scarcity findings, got ${f.length}`);
+  assert.ok(f.some((x) => /सिर्फ/.test(x.evidence.matchedPhrase)));
+});
+
+test('ROMANISED Hinglish scarcity is caught — the case no Unicode range finds', () => {
+  const f = get(hinglish, 'FALSE_URGENCY')
+    .filter((x) => x.evidence.language === 'Hinglish (romanised Hindi)');
+  assert.ok(f.length >= 1, 'Hinglish is plain ASCII, so only a phrase lexicon catches it');
+  assert.ok(f.some((x) => /sirf|jaldi|khatam/i.test(x.evidence.matchedPhrase)));
+});
+
+test('confirm shaming is caught in BOTH Hindi and Hinglish', () => {
+  const langs = new Set(get(hinglish, 'CONFIRM_SHAMING').map((f) => f.evidence.language));
+  assert.ok(langs.has('Hindi'), 'Devanagari decline wording');
+  assert.ok(langs.has('Hinglish (romanised Hindi)'), 'romanised decline wording');
+});
+
+test('Hindi fee names are caught on an otherwise English checkout', () => {
+  const f = get(hinglish, 'DRIP_PRICING').filter((x) => x.evidence.language === 'Hindi');
+  assert.ok(f.length >= 1, 'सुविधा शुल्क is a convenience fee');
+});
+
+test('every non-English finding names its language and matched phrase', () => {
+  for (const f of hinglish.findings) {
+    if (!f.rule.endsWith('-nonenglish')) continue;
+    assert.ok(f.evidence.language, `${f.rule} must name the language`);
+    assert.ok(f.evidence.matchedPhrase, `${f.rule} must quote what matched`);
+    assert.ok(f.evidence.lexiconCoverage, `${f.rule} must state lexicon coverage`);
+  }
+});
+
+test('the scan records which scripts the page actually contains', () => {
+  assert.ok(hinglish.scriptsOnPage.includes('Devanagari'));
+  assert.deepEqual(clean.scriptsOnPage, [], 'an English page reports no Indic scripts');
+});
+
+test('lexicon coverage is declared per language, never claimed uniform', () => {
+  const langs = hinglish.lexiconLanguages;
+  assert.ok(langs.length >= 6);
+  const levels = new Set(langs.map((l) => l.coverage));
+  assert.ok(levels.has('GOOD') && (levels.has('PARTIAL') || levels.has('MINIMAL')),
+    'coverage must be honestly graded, not uniformly claimed');
+});
+
+test('a weak-coverage script triggers an explicit warning on the report', async () => {
+  const page = await browser.newPage();
+  await page.setContent('<body><p>இருப்பு குறைவு</p><p>சீக்கிரம்</p></body>');
+  for (const f of ['registry.js', 'lexicon.js', 'measure.js', 'detectors.js', 'score.js', 'scan.js']) {
+    await page.addScriptTag({ path: join(ENGINE, f) });
+  }
+  const r = await page.evaluate(() => globalThis.Kasauti.scan());
+  await page.close();
+  assert.ok(r.scriptsOnPage.includes('Tamil'));
+  assert.ok(r.lexiconCoverage, 'partial-coverage language must raise a warning');
+  assert.match(r.lexiconCoverage.warning, /should not be read as compliance/);
+});
+
+/* ===================================================================== *
+ * THE COMPLIANCE INDEX
+ * ===================================================================== */
+
+test('score and assurance are separate axes, never folded together', async () => {
+  const page = await browser.newPage();
+  await page.goto(`file://${join(FIXTURES, 'clean.html')}`);
+  for (const f of ['registry.js', 'lexicon.js', 'measure.js', 'detectors.js', 'score.js', 'scan.js']) {
+    await page.addScriptTag({ path: join(ENGINE, f) });
+  }
+  const s = await page.evaluate(() => {
+    const r = globalThis.Kasauti.scan();
+    return globalThis.Kasauti.score(r);
+  });
+  await page.close();
+  // REGRESSION: an earlier build multiplied coverage into the score and produced
+  // a clean page scoring 100 against its own stated ceiling of 62.
+  assert.equal(s.value, 100, 'a clean page is clean on what was assessed');
+  assert.ok(s.assurance < 100, 'and assurance is separately below 100');
+  assert.ok(s.assurance >= 50 && s.assurance <= 80, `assurance was ${s.assurance}`);
+  assert.match(s.caveat, /not a compliance certification/);
+  assert.match(s.caveat, /Subscription trap/, 'the caveat must name what was not assessed');
+});
+
+test('a dirty page scores materially worse than a clean one', async () => {
+  const page = await browser.newPage();
+  await page.goto(`file://${join(FIXTURES, 'dirty.html')}`);
+  for (const f of ['registry.js', 'lexicon.js', 'measure.js', 'detectors.js', 'score.js', 'scan.js']) {
+    await page.addScriptTag({ path: join(ENGINE, f) });
+  }
+  const s = await page.evaluate(() => globalThis.Kasauti.score(globalThis.Kasauti.scan()));
+  await page.close();
+  assert.ok(s.value < 60, `dirty page scored ${s.value}`);
+  assert.ok(['C', 'D', 'E'].includes(s.grade));
+  assert.ok(s.deductions.length >= 5);
+  assert.ok(s.deductions[0].deduction >= s.deductions.at(-1).deduction, 'ordered worst-first');
+});
+
+test('the scoring formula is published with the score so the rule can be disputed', async () => {
+  const page = await browser.newPage();
+  await page.goto(`file://${join(FIXTURES, 'dirty.html')}`);
+  for (const f of ['registry.js', 'lexicon.js', 'measure.js', 'detectors.js', 'score.js', 'scan.js']) {
+    await page.addScriptTag({ path: join(ENGINE, f) });
+  }
+  const s = await page.evaluate(() => globalThis.Kasauti.score(globalThis.Kasauti.scan()));
+  await page.close();
+  assert.ok(s.formula.description.length > 40);
+  assert.equal(s.formula.weights.BASKET_SNEAKING, 10, 'weights must be published');
+  assert.ok(s.formula.confidenceFactors.PROVEN === 1);
+});
+
+test('one noisy pattern cannot dominate the whole index', async () => {
+  // Twelve drip-pricing lines must not cost more than 1.5x the pattern weight.
+  const page = await browser.newPage();
+  await page.goto('about:blank');
+  for (const f of ['registry.js', 'score.js']) await page.addScriptTag({ path: join(ENGINE, f) });
+  const s = await page.evaluate(() => globalThis.Kasauti.score({
+    findings: Array.from({ length: 12 }, () => ({ pattern: 'DRIP_PRICING', confidence: 'PROVEN' })),
+    notChecked: [],
+  }));
+  await page.close();
+  assert.ok(s.deductions[0].deduction <= 8 * 1.5 + 0.01, `deduction was ${s.deductions[0].deduction}`);
+});
+
+test('REGRESSION: a Hindi phrase is reported once, not once per ancestor', async () => {
+  // A card and the paragraph inside it both matched the same phrase, so the
+  // shopper saw "सिर्फ 2 बचे" twice. Duplicate findings are how a reviewer
+  // learns to stop trusting the list.
+  const r = await scanFixture('hinglish.html');
+  const phrases = get(r, 'FALSE_URGENCY')
+    .filter((f) => f.rule === 'scarcity-claim-nonenglish')
+    .map((f) => f.evidence.matchedPhrase);
+  assert.equal(new Set(phrases).size, phrases.length,
+    `duplicate phrases reported: ${JSON.stringify(phrases)}`);
+});
+
+test('but two DIFFERENT claims inside one card are both still reported', async () => {
+  const r = await scanFixture('hinglish.html');
+  const phrases = get(r, 'FALSE_URGENCY').map((f) => f.evidence.matchedPhrase).filter(Boolean);
+  assert.ok(phrases.length >= 4,
+    `ancestor filtering must not swallow sibling claims; got ${JSON.stringify(phrases)}`);
+});
+
+/* ---------------------------- the grade cap ------------------------------ *
+ * REGRESSION: a page with nine findings, including confirm shaming in two
+ * languages, scored "grade A, no significant patterns observed" because every
+ * finding sat on a low-weight pattern. That is the false reassurance this
+ * project exists to expose, reproduced inside the tool.
+ * ------------------------------------------------------------------------- */
+
+async function scoreOf(findings, notChecked = []) {
+  const page = await browser.newPage();
+  await page.goto('about:blank');
+  for (const f of ['registry.js', 'score.js']) await page.addScriptTag({ path: join(ENGINE, f) });
+  const s = await page.evaluate((r) => globalThis.Kasauti.score(r), { findings, notChecked });
+  await page.close();
+  return s;
+}
+
+test('an audit that found nothing may report grade A', async () => {
+  const s = await scoreOf([]);
+  assert.equal(s.grade, 'A');
+  assert.equal(s.gradeCapped, false);
+  assert.match(s.label, /Nothing observed on the patterns assessed/);
+});
+
+test('REGRESSION: any finding at all caps the grade at B', async () => {
+  const s = await scoreOf([{ pattern: 'CONFIRM_SHAMING', confidence: 'STRONG' }]);
+  assert.equal(s.grade, 'B');
+  assert.equal(s.gradeCapped, true);
+  assert.match(s.gradeCapReason, /cannot report a clean bill of health/);
+});
+
+test('REGRESSION: a proven finding caps the grade at C, however good the arithmetic', async () => {
+  const s = await scoreOf([{ pattern: 'NAGGING', confidence: 'PROVEN' }]);
+  assert.ok(s.value > 90, 'the weighted score stays high, which is the point');
+  assert.equal(s.grade, 'C', 'but the grade may not');
+  assert.match(s.gradeCapReason, /proven finding/);
+});
+
+test('no band label can be quoted as a clearance', async () => {
+  for (const f of [[], [{ pattern: 'NAGGING', confidence: 'INDICATIVE' }]]) {
+    const s = await scoreOf(f);
+    assert.ok(!/compliant|clean|no dark patterns/i.test(s.label),
+      `label "${s.label}" could be quoted as a clearance`);
+  }
+});
+
+test('the raw score is preserved so platforms stay comparable', async () => {
+  const mild = await scoreOf([{ pattern: 'NAGGING', confidence: 'PROVEN' }]);
+  const bad = await scoreOf([
+    { pattern: 'BASKET_SNEAKING', confidence: 'PROVEN' },
+    { pattern: 'FORCED_ACTION', confidence: 'PROVEN' },
+  ]);
+  assert.ok(mild.value > bad.value, 'capping the grade must not flatten the underlying score');
 });

@@ -2,7 +2,7 @@
 
 *The touchstone: the stone jewellers rub gold against to find out whether it is real.*
 
-**A dark pattern auditor for India's CCPA Guidelines, 2023 — that measures instead of guessing, and tells you what it could not check.**
+**A dark pattern auditor for India's CCPA Guidelines, 2023 — that measures instead of guessing, speaks Indian languages, tests the page instead of just reading it, and tells you what it could not check.**
 
 ---
 
@@ -38,9 +38,91 @@ what they did not check.
 |---|---|---|
 | Taxonomy | generic / academic | **the 13 named in CCPA 2023, with clause citations** |
 | Method | LLM opinion on text | **measured: WCAG contrast, rendered area, DOM state** |
-| Output | a highlight | **evidence a reviewer can re-derive** |
-| Scope honesty | silent | **declares 4 of 13 as NOT CHECKED, and why** |
+| Languages | English | **Hindi, Hinglish, Tamil, Telugu, Bengali, Marathi** |
+| Evidence | a highlight | **evidence a reviewer can re-derive** |
+| Verification | reads the page | **probes it: presses Escape, unticks boxes, reloads** |
+| Comparability | none | **a published Compliance Index with its formula** |
+| Scope honesty | silent | **declares 4 of 13 as NOT ASSESSED, and why** |
 | Purpose | inform a shopper | **also verify a filed compliance claim** |
+
+## The four things that make the core hard to copy
+
+### 1. It speaks the languages Indian storefronts actually use
+
+Every other detector matches English. Indian e-commerce does not run in English,
+and **romanised Hinglish is plain ASCII**, so no Unicode range catches it either.
+
+```
+[STRONG]     CONFIRM SHAMING   Hindi
+             "नहीं, मुझे बचत नहीं चाहिए"
+
+[STRONG]     CONFIRM SHAMING   Hinglish (romanised Hindi)
+             "Nahi, mujhe bachat nahi chahiye"
+
+[INDICATIVE] FALSE URGENCY     Hindi
+             "सिर्फ 2 बचे"  ·  "जल्दी करें"
+```
+
+An English-only regex reads that page as clean — **which is worse than not
+checking, because it manufactures a pass.**
+
+Coverage is declared per language (Hindi and Hinglish `GOOD`; Tamil, Telugu and
+Bengali `PARTIAL`; Marathi `MINIMAL`), the scan detects which scripts the page
+actually contains, and the report says so when a clean result is weak because
+the lexicon is thin.
+
+### 2. It probes the page instead of just reading it
+
+Observation says *"no visible dismiss control."* A probe says *"Escape, a
+backdrop click and every close-looking control were tried, in a real browser,
+and it is still there."* Only the second survives a platform replying "the user
+could simply have pressed Escape."
+
+```
+[PROVEN] FORCED_ACTION
+  The overlay survived 2 dismissal attempts including the Escape key
+  and a backdrop click. There is no way past it except to comply.
+
+[PROVEN] BASKET_SNEAKING
+  3 pre-ticked paid add-ons were unticked and then silently re-ticked
+  when the page reloaded.
+```
+
+A third probe (`--crawl`) measures the distance from the homepage to *subscribe*
+against the distance to *cancel*. That does **not** prove a subscription trap —
+proving that needs a live paid subscription — and it says so in those words. It
+measures the gradient.
+
+### 3. A Compliance Index with its arithmetic published
+
+One comparable number, so a platform can be held against another and against
+itself six months later — with the weights, confidence factors and repeat
+multiplier printed in every report, so a platform disputes the **rule** rather
+than the result.
+
+**Two axes, never multiplied together:**
+
+```
+  INDEX  90/100  grade B      how clean, across the patterns assessed
+  ASSURANCE  58%              how much of the harm surface was assessable
+```
+
+An earlier build folded them into one figure and produced a clean page scoring
+100 against its own stated ceiling of 62. A number cannot exceed its own
+ceiling; collapsing two questions into one made it possible.
+
+### 4. The grade cap — the tool refusing to reassure
+
+A build of this scored a page **grade A, "no significant patterns observed"**
+while holding nine findings, including confirm shaming in two languages, because
+every finding sat on a low-weight pattern. That is the false reassurance this
+project exists to expose, reproduced inside the tool.
+
+So: **any finding caps the grade at B. Any PROVEN finding caps it at C.** The
+raw score is preserved so platforms stay comparable; only the sentence a
+non-technical reader will quote is held back. And no band label can be quoted as
+a clearance — the best one reads *"Nothing observed on the patterns assessed"*,
+which is a statement about the audit, not about the platform.
 
 ## The measurement, not the vibe
 
@@ -103,14 +185,19 @@ requiring substantiation rather than a proven lie.
 ## What is built
 
 ```
-engine/         zero-dependency detection engine, runs in browser AND Node
-  registry.js     the 13 patterns, legal text, clause, detectability
+engine/         zero-dependency, runs in a browser AND in Node
+  registry.js     the 13 patterns: legal text, clause, detectability
+  lexicon.js      Hindi · Hinglish · Tamil · Telugu · Bengali · Marathi
   measure.js      WCAG 2.2 contrast, rendered area, visibility, selectors
   detectors.js    the 9 patterns a page render can speak to
+  score.js        the Compliance Index, its formula and the grade cap
   scan.js         orchestrator → findings / notDetected / notChecked
-extension/      Chrome MV3, closed Shadow DOM panel
-cli/audit.mjs   headless auditor + the countdown reload proof
-test/           26 tests in real Chromium
+extension/      Chrome MV3, closed Shadow DOM, tabbed panel, dark mode
+cli/
+  audit.mjs       headless auditor, countdown proof, probes, scoring
+  probes.mjs      dismissibility · opt-out persistence · join-leave asymmetry
+  report.mjs      the printable audit report
+test/           46 tests in real Chromium
 ```
 
 **One engine, two surfaces.** `build.mjs` copies the engine into the extension
@@ -121,11 +208,12 @@ neither would be evidence.
 ## Run it
 
 ```bash
-node build.mjs                                    # copy engine into extension
-npm test                                          # 26 tests, real Chromium
+node build.mjs                                      # copy engine into extension
+npm test                                            # 46 tests, real Chromium
 
-node cli/audit.mjs https://example.com --out out  # audit a page
-node cli/audit.mjs https://example.com --no-proof # skip the reload test
+node cli/audit.mjs https://example.com --out out    # full audit
+node cli/audit.mjs https://example.com --crawl      # + join/leave asymmetry
+node cli/audit.mjs https://example.com --no-probe   # read only, do not interact
 ```
 
 Load `extension/` as an unpacked extension at `chrome://extensions`.
@@ -154,7 +242,7 @@ Tests run in real Chromium, not a DOM simulator — half these detectors depend 
 computed styles and composited backgrounds, and a simulator would let the suite
 pass while the product failed.
 
-## Bugs found by building it
+## Design corrections forced by building it
 
 - **FORCED_ACTION matched on class names.** It selected `.modal`, `.popup`,
   `[class*="overlay"]` and missed a full-screen sign-in wall whose only
@@ -167,13 +255,31 @@ pass while the product failed.
 - **NAGGING was reported as "not checked" after being checked.** The snapshot
   scan correctly can't see repetition, but the CLI *does* observe for it, and
   the report has to say which.
+- **The score exceeded its own ceiling.** Coverage was folded into the value,
+  so a clean page read 100 against a stated ceiling of 62. Split into two axes
+  that are reported side by side and never combined.
+- **A page with nine findings graded A.** Fixed with the grade cap above — the
+  correction that matters most, because it is the tool committing the exact
+  failure it audits for.
+- **Hindi findings double-counted.** The multilingual pass lacked the
+  innermost-match filter the English pass had, so a card and the paragraph
+  inside it both reported *"सिर्फ 2 बचे"*. Duplicate findings are how a reviewer
+  learns to stop trusting the list.
+- **The evidence contract was not uniform.** Drip pricing emitted `signal` where
+  every other detector emitted `matchedPhrase`, so a consumer had to
+  special-case one detector. Caught by a test asserting the contract, not by a
+  crash.
 
 ## Status, honestly
 
-- **Works today:** engine, extension, CLI, the reload proof, 26 passing tests.
-- **Deliberately absent:** published listing, hosted scanner, multi-page
-  checkout traversal (the thing that would turn DRIP_PRICING from indicative
-  into proven), Hindi/regional-language phrase sets for confirm shaming.
+- **Works today:** engine, extension, CLI, the reload proof, three interaction
+  probes, six-language lexicon, the Compliance Index, 46 passing tests.
+- **Deliberately absent:** published listing, hosted scanner, and multi-page
+  checkout traversal — the thing that would turn `DRIP_PRICING` from indicative
+  into proven by comparing the listed price against the final payable amount.
+- **Lexicon coverage is uneven and says so.** Tamil, Telugu and Bengali are
+  `PARTIAL`; Marathi is `MINIMAL`. Contributions should lower a coverage level
+  rather than raise it when unsure.
 - **Thresholds are policy, not physics.** 3× area and 3.0:1 legibility are
   stated in every report so a platform can dispute the *rule* rather than the
   result.

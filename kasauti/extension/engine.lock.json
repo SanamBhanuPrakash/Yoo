@@ -1,9 +1,11 @@
 {
-  "builtAt": "2026-09-21T18:40:09.868Z",
+  "builtAt": "2026-09-22T00:38:31.443Z",
   "files": {
-    "detectors.js": "57782dc71c440874",
+    "detectors.js": "0286d5ac8c93567b",
+    "lexicon.js": "ddb465c2815280f2",
     "measure.js": "5db3f7a1636286c1",
     "registry.js": "a32195ee28c5d9b0",
-    "scan.js": "d9e3323a33618497"
+    "scan.js": "98f869ef77171d7c",
+    "score.js": "8f155892aab700cd"
   }
 }

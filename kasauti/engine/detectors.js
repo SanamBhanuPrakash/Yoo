@@ -104,6 +104,50 @@
         }));
     });
 
+    // Multilingual scarcity: the same nodes, read through the Indian-language
+    // lexicon. "Sirf 2 bache hain" is Annexure 1(1) exactly as much as
+    // "Only 2 left" is, and only one of the two is ASCII English.
+    //
+    // Innermost-match filtering applies here too. Without it a card and the
+    // paragraph inside it both match the same Hindi phrase and the shopper sees
+    // the identical finding twice -- which is how a real reviewer learns to stop
+    // trusting the list.
+    if (K.lexicon) {
+      var lexMatches = [];
+      nodes.forEach(function (el) {
+        if (el.children.length > 3) return;
+        var t = M.textOf(el, 120);
+        if (!t || t.length > 120) return;
+        if (seen.has(t.toLowerCase())) return;
+        var hit = K.lexicon.match('FALSE_URGENCY', t);
+        if (hit) lexMatches.push({ el: el, text: t, hit: hit });
+      });
+
+      lexMatches.filter(function (m) {
+        return !lexMatches.some(function (o) {
+          // Drop an ancestor only when its descendant matched the SAME phrase;
+          // a card whose child says "only 2 left" may separately say "hurry",
+          // and that second claim is a real finding of its own.
+          return o.el !== m.el && m.el.contains(o.el) && o.hit.matched === m.hit.matched;
+        });
+      }).forEach(function (m) {
+        var key = m.text.toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        out.push(finding('FALSE_URGENCY', C.INDICATIVE, 'scarcity-claim-nonenglish',
+          'Scarcity or urgency claim in ' + m.hit.langName + ': "' + m.hit.matched + '".',
+          {
+            text: m.text,
+            language: m.hit.langName,
+            matchedPhrase: m.hit.matched,
+            lexiconCoverage: m.hit.coverage,
+            selector: M.cssPath(m.el),
+            note: 'Detected through the Indian-language lexicon. An English-only detector ' +
+                  'reads this page as clean.',
+          }));
+      });
+    }
+
     // Countdown timers: recorded with their current value so the CLI two-load
     // comparison can turn this from a suspicion into a proof.
     var timers = [];
@@ -187,24 +231,38 @@
 
   function detectConfirmShaming() {
     var out = [];
+    var lex = K.lexicon;
     var controls = visibleAll('button,a,[role="button"],input[type="button"],input[type="submit"],label');
     controls.forEach(function (el) {
       var text = M.textOf(el, 200);
       if (!text || text.length > 200) return;
+
+      var hit = null;
       for (var i = 0; i < SHAME.length; i += 1) {
-        if (!SHAME[i].test(text)) continue;
-        out.push(finding('CONFIRM_SHAMING', C.STRONG, 'guilt-framed-decline',
-          'The option to decline is worded as a confession of a personal failing.',
-          {
-            declineText: text,
-            looksLikeDecline: DECLINE_HINT.test(text),
-            selector: M.cssPath(el),
-            profile: M.profile(el),
-            note: 'Quoted verbatim. A reviewer judges the wording directly rather than ' +
-                  'trusting a classifier’s opinion of it.',
-          }));
-        return;
+        if (SHAME[i].test(text)) { hit = { langName: 'English', matched: text }; break; }
       }
+      // Indian storefronts decline in Hindi, Hinglish, Tamil, Telugu and Bengali.
+      // An English-only pass reads those pages as clean, which is worse than not
+      // checking at all: it manufactures a pass.
+      if (!hit && lex) hit = lex.match('CONFIRM_SHAMING', text);
+      if (!hit) return;
+
+      var foreign = hit.langName && hit.langName !== 'English';
+      out.push(finding('CONFIRM_SHAMING', C.STRONG,
+        foreign ? 'guilt-framed-decline-nonenglish' : 'guilt-framed-decline',
+        'The option to decline is worded as a confession of a personal failing' +
+          (foreign ? ' (' + hit.langName + ')' : '') + '.',
+        {
+          declineText: text,
+          language: hit.langName || 'English',
+          matchedPhrase: hit.matched,
+          lexiconCoverage: hit.coverage || null,
+          looksLikeDecline: DECLINE_HINT.test(text),
+          selector: M.cssPath(el),
+          profile: M.profile(el),
+          note: 'Quoted verbatim so a reviewer judges the wording directly rather than ' +
+                'trusting a classifier opinion of it.',
+        }));
     });
     return out;
   }
@@ -411,26 +469,37 @@
 
       var feeMatch = text.match(FEE);
       var deferredMatch = text.match(DEFERRED);
-      if (!feeMatch && !deferredMatch) return;
+      // Indian fee lines are frequently named in Hindi on the same checkout that
+      // shows the rest of the page in English.
+      var lexHit = (!feeMatch && !deferredMatch && K.lexicon)
+        ? K.lexicon.match('DRIP_PRICING', text) : null;
+      if (!feeMatch && !deferredMatch && !lexHit) return;
 
       var key = text.toLowerCase();
       if (seen.has(key)) return;
       seen.add(key);
 
       out.push(finding('DRIP_PRICING', C.INDICATIVE,
-        feeMatch ? 'late-fee-line' : 'deferred-cost-disclaimer',
-        feeMatch
-          ? 'A separate "' + feeMatch[0] + '" is levied on top of the item price.'
-          : 'The displayed price is qualified by a deferred-cost disclaimer.',
+        lexHit ? 'late-fee-line-nonenglish' : feeMatch ? 'late-fee-line' : 'deferred-cost-disclaimer',
+        lexHit
+          ? 'A separate charge named in ' + lexHit.langName + ': "' + lexHit.matched + '".'
+          : feeMatch
+            ? 'A separate "' + feeMatch[0] + '" is levied on top of the item price.'
+            : 'The displayed price is qualified by a deferred-cost disclaimer.',
         {
           text: text,
-          signal: (feeMatch || deferredMatch)[0],
+          language: lexHit ? lexHit.langName : 'English',
+          // Every finding exposes the same evidence contract regardless of which
+          // detector produced it, so a consumer never has to special-case one.
+          matchedPhrase: lexHit ? lexHit.matched : (feeMatch || deferredMatch)[0],
+          lexiconCoverage: lexHit ? lexHit.coverage : null,
+          signal: lexHit ? lexHit.matched : (feeMatch || deferredMatch)[0],
           carriesAmount: CURRENCY.test(text),
           selector: M.cssPath(el),
           context: M.inContext(el, ['cart', 'checkout', 'payment', 'total', 'summary', 'bill']),
-          note: 'Drip pricing is established by comparing the FIRST advertised price against ' +
-                'the FINAL payable amount across a checkout flow. A single page can only ' +
-                'surface the signal, so this is indicative and not a proven violation.',
+          note: 'Drip pricing is established by comparing the FIRST advertised price against the ' +
+                'FINAL payable amount across a checkout flow. A single page can only surface the ' +
+                'signal, so this is indicative. Run the CLI with --flow to prove it.',
         }));
     });
     return out;

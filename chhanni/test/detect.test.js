@@ -227,3 +227,41 @@ test('the manifest requests no network permission', async () => {
   assert.ok(!m.permissions.includes('webRequest'));
   assert.equal(m.manifest_version, 3);
 });
+
+test('a finding always points at the text it matched', () => {
+  // start/end are derived with m[0].indexOf(value), which is a guess about
+  // where a capture group sits inside its match. Redaction splices on those
+  // offsets, so if the guess is ever wrong the extension replaces the wrong
+  // characters and leaves the secret in place. 20k seeded inputs over an
+  // alphabet built from the detectors' own vocabulary.
+  const alphabet = 'aA9 \n=:"_-+/.@AKIAsk-ant9876543210eyJ';
+  let seed = 12345;
+  const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  for (let i = 0; i < 20000; i++) {
+    let text = '';
+    const n = 1 + Math.floor(rnd() * 60);
+    for (let j = 0; j < n; j++) text += alphabet[Math.floor(rnd() * alphabet.length)];
+    for (const f of scan(text).findings) {
+      assert.equal(text.slice(f.start, f.end), f.match,
+        `offsets disagree with the match for ${f.ruleId} in ${JSON.stringify(text)}`);
+    }
+  }
+});
+
+test('redacting a document never leaves a matched secret behind', () => {
+  const alphabet = 'aA9 \n=:"_-+/.@AKIAsk-ant9876543210eyJ';
+  let seed = 999;
+  const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  for (let i = 0; i < 5000; i++) {
+    let text = '';
+    const n = 1 + Math.floor(rnd() * 80);
+    for (let j = 0; j < n; j++) text += alphabet[Math.floor(rnd() * alphabet.length)];
+    const { findings } = scan(text);
+    if (findings.length === 0) continue;
+    const out = redact(text, findings).text;
+    for (const f of findings) {
+      assert.ok(!out.includes(f.match),
+        `${f.ruleId} survived redaction in ${JSON.stringify(text)}`);
+    }
+  }
+});

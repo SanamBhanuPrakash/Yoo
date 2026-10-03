@@ -85,20 +85,39 @@ stop crying wolf: make the match prove itself.
 
 **30 detectors. 11 verify the match beyond its shape.**
 
-Measured, not claimed: scanned against 57 files of ordinary application source
-and documentation, Chhanni reports **zero findings**. Against a prompt carrying
-nine real credential and identifier formats, it finds all nine. A plain
-TypeScript stack trace comes back clean.
+Measured, and you can re-run the measurement:
+
+```console
+$ chhanni scan node_modules/eslint/lib     # 393 files
+found 8 in 393 files                       # 8 low-severity emails in @author tags
+
+$ chhanni scan node_modules/npm/lib        # 111 files
+found 1 in 111 files                       # 1 low-severity email
+```
+
+Across 566 files of real third-party and application source, **not one
+credential false positive and not one blocking verdict** — the only things it
+reported were author email addresses in doc comments, at `low`, which is exactly
+what a `low` finding is for. Against a prompt carrying nine real credential and
+identifier formats it finds all nine, and a plain TypeScript stack trace comes
+back clean.
 
 Where a detector cannot prove itself, it says so. Every finding carries a
 `confidence` of `certain`, `likely` or `possible`, and the ones that shipped as
 `possible` are the ones you should expect to allowlist.
 
-## It makes no network calls
+## Chhanni makes no network calls
 
-Not "we don't store your data". There is no `fetch` in the extension. The
-manifest requests no network permission — only `storage`, for your own settings.
-A tool that inspects your credentials has no business holding a network handle.
+Not "we don't store your data". There is no `fetch` anywhere in the extension —
+`npm test` fails if the string appears in a shipped file. The manifest requests
+no network permission, only `storage` for your own settings. A tool that
+inspects your credentials has no business holding a network handle.
+
+Note the subject of that sentence. **Chhanni** sends nothing anywhere; **your
+prompt** still goes to the AI provider when you send it, because that is what
+you are trying to do. "Nothing ever leaves your browser" would be a nicer line
+and it would be false, so it is not written anywhere in this project. Details in
+[PRIVACY.md](PRIVACY.md).
 
 That is also why the engine never hands a raw secret to anything that persists:
 findings carry a masked `preview` and a one-way FNV-1a `fingerprint`, and
@@ -111,11 +130,20 @@ add telemetry; the fork should be safe by construction.
 
 ```console
 git clone <this repo> && cd chhanni
-node scripts/build-extension.js     # copies the engine in; no bundler, no deps
 ```
 
 Then `chrome://extensions` → Developer mode → **Load unpacked** → pick
-`extension/`.
+`extension/`. That directory is complete as checked out; `extension/engine/` is
+committed rather than generated on first run, because an extension missing it
+loads, reports no error anywhere in Chrome's UI, and silently guards nothing.
+
+After editing anything in `src/`, re-run the copy step:
+
+```console
+node scripts/build-extension.js     # no bundler, no deps
+```
+
+`npm test` fails if you forget.
 
 **CLI** — no install, no dependencies:
 
@@ -171,6 +199,12 @@ Worth being straight about, because the gaps are where people get hurt:
   biggest hole and the next thing to close.
 - **It only runs on the sites in the manifest.** A new AI product ships every
   week; that list will always be behind.
+- **It does not read the model's reply.** A model that echoes your key back, or
+  a page that injects text into the conversation, is outside what this sees.
+- **The panel is drawn inside the page.** It lives in a closed shadow root so
+  ordinary page CSS cannot hide it, but a content script drawing UI on a page
+  it does not control can always be interfered with by that page. Treat it as a
+  seatbelt, not a vault.
 - **It matches formats, not meaning.** Describing your unreleased pricing
   strategy in careful prose is a leak Chhanni cannot see. Nothing pattern-based
   can.
@@ -185,28 +219,43 @@ Worth being straight about, because the gaps are where people get hurt:
 ## Tests
 
 ```console
-$ node --test test/*.test.js
-# tests 27
-# pass 27
+$ npm test
+# tests 48
+# pass 48
 # fail 0
 ```
 
-The suite covers every checksum against known-good and known-bad vectors, true
-positives for each credential family, and — the part that matters — explicit
-false-positive tests: order numbers that fail Luhn, invoice totals that fail
-Verhoeff, never-issued SSN ranges, documentation placeholders like
-`API_KEY=your-api-key-here`, and a plain stack trace.
+`test/detect.test.js` covers every checksum against known-good and known-bad
+vectors, true positives for each credential family, and — the part that
+matters — explicit false-positive tests: order numbers that fail Luhn, invoice
+totals that fail Verhoeff, never-issued SSN ranges, documentation placeholders
+like `API_KEY=your-api-key-here`, and a plain stack trace. Two seeded fuzz
+invariants run 25,000 generated inputs and assert that a finding's offsets
+always point at the text it matched, and that redaction never leaves a matched
+secret in the output.
+
+`test/shipping.test.js` covers the artifact rather than the engine, and every
+assertion in it corresponds to a way the extension was observed to fail in a
+real browser: the engine must be present and byte-identical to `src/`, the
+content script must survive a failed engine load and say so, a scan that throws
+must stop the paste instead of letting it through, the panel must be in a closed
+shadow root, resources must not be exposed to every site, the content script
+must run in frames, and scanning must stay linear in the length of the input.
 
 ## Layout
 
 ```
-src/checksums.js   Luhn, Verhoeff, mod-97, CRC32, entropy — pure, no deps
-src/rules.js       the 30 detectors
-src/detect.js      scanning, overlap resolution, masking, fingerprinting
-src/redact.js      stable placeholders, reversible
-bin/chhanni.js     CLI
-extension/         MV3 extension; engine/ is copied from src/ at build time
-test/              node:test, no runner to install
+src/checksums.js      Luhn, Verhoeff, mod-97, CRC32, entropy — pure, no deps
+src/rules.js          the 30 detectors
+src/detect.js         scanning, overlap resolution, masking, fingerprinting
+src/redact.js         stable placeholders, reversible
+bin/chhanni.js        CLI
+extension/            MV3 extension; engine/ is copied from src/ by the build
+extension/icons/      generated by scripts/make-icons.js, no binaries by hand
+scripts/              copy the engine in, draw the icons
+test/detect.test.js   the engine is right
+test/shipping.test.js the thing that ships is complete, bounded and honest
+PRIVACY.md            what is read, what is stored, what is not sent
 ```
 
 One engine, three surfaces. The rule that stops the paste is the same rule that
